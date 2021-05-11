@@ -1,0 +1,112 @@
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-metadata
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: vizier-metadata
+  serviceName: vizier-metadata
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: vizier-metadata
+        plane: control
+    spec:
+      containers:
+      - env:
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PL_MAX_EXPECTED_CLOCK_SKEW
+          value: "2000"
+        - name: PL_RENEW_PERIOD
+          value: "5000"
+        envFrom:
+        - configMapRef:
+            name: pl-tls-config
+        - configMapRef:
+            name: pl-cluster-config
+            optional: true
+        image: gcr.io/pixie-prod/vizier/metadata_server_image:0.7.8
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 50400
+            scheme: HTTPS
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        name: app
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /healthz
+            port: 50400
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+        - mountPath: /metadata
+          name: metadata-volume
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - set -xe; URL="${PROTOCOL}://${SERVICE_NAME}:${SERVICE_PORT}${HEALTH_PATH}";
+          until [ $(curl -m 0.5 -s -o /dev/null -w "%{http_code}" -k ${URL}) -eq 200
+          ]; do echo "waiting for ${URL}"; sleep 2; done;
+        env:
+        - name: SERVICE_NAME
+          value: pl-nats-mgmt
+        - name: SERVICE_PORT
+          value: "8222"
+        - name: HEALTH_PATH
+          value: ""
+        - name: PROTOCOL
+          value: http
+        image: gcr.io/pixie-prod/pixie-prod-artifacts/curl:1.0
+        name: nats-wait
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - name: metadata-volume
+        persistentVolumeClaim:
+          claimName: metadata-pv-claim
+---

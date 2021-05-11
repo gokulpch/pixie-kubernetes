@@ -1,0 +1,152 @@
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: kelvin-service
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: tcp-http2
+    port: 59300
+    protocol: TCP
+    targetPort: 59300
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: kelvin
+  type: ClusterIP
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-certmgr
+  namespace: default
+spec:
+  ports:
+  - name: tcp-http2
+    port: 50900
+    protocol: TCP
+    targetPort: 50900
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: vizier-certmgr
+  type: ClusterIP
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+  name: vizier-cloud-connector
+  namespace: default
+spec:
+  ports:
+  - name: tcp-http2
+    port: 50800
+    protocol: TCP
+    targetPort: 50800
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: vizier-cloud-connector
+    vizier-bootstrap: "true"
+  type: ClusterIP
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-metadata
+  namespace: default
+spec:
+  ports:
+  - name: tcp-http2
+    port: 50400
+    protocol: TCP
+    targetPort: 50400
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: vizier-metadata
+  type: ClusterIP
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-proxy-service
+  namespace: default
+spec:
+  ports:
+  - name: tcp-https
+    port: 443
+    protocol: TCP
+    targetPort: 55000
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: vizier-proxy
+  type: NodePort
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-query-broker
+  namespace: default
+spec:
+  ports:
+  - name: tcp-http2
+    port: 50300
+    protocol: TCP
+    targetPort: 50300
+  - name: tcp-grpc-web
+    port: 50305
+    protocol: TCP
+    targetPort: 50305
+  selector:
+    app: pl-monitoring
+    component: vizier
+    name: vizier-query-broker
+  type: ClusterIP
+---

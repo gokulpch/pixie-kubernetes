@@ -1,0 +1,24 @@
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+  name: pl-psp
+  namespace: default
+rules:
+- apiGroups:
+  - policy
+  resourceNames:
+  - pl
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+---

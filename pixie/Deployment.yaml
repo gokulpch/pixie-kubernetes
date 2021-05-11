@@ -1,0 +1,489 @@
+---
+# Source: pixie-chart/templates/01_nats.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+  name: nats-operator
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      name: nats-operator
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        name: nats-operator
+        plane: control
+    spec:
+      containers:
+      - args:
+        - nats-operator
+        env:
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: connecteverything/nats-operator:0.5.0-v1alpha2
+        imagePullPolicy: IfNotPresent
+        name: nats-operator
+        ports:
+        - containerPort: 8080
+          name: readyz
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: readyz
+          initialDelaySeconds: 15
+          timeoutSeconds: 3
+      serviceAccountName: nats-operator
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: kelvin
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: kelvin
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: kelvin
+        plane: data
+    spec:
+      containers:
+      - env:
+        - name: PL_HOST_PATH
+          value: /host
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: PL_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PL_HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: TCMALLOC_SAMPLE_PARAMETER
+          value: "1048576"
+        envFrom:
+        - configMapRef:
+            name: pl-tls-config
+        image: gcr.io/pixie-prod/vizier/kelvin_image:0.7.8
+        name: app
+        ports:
+        - containerPort: 59300
+        resources: {}
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+        - mountPath: /sys
+          name: sys
+          readOnly: true
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - 'set -x; URL="https://${SERVICE_NAME}:${SERVICE_PORT}/healthz"; until [
+          $(curl -m 0.5 -s -o /dev/null -w "%{http_code}" -k ${URL}) -eq 200 ]; do
+          echo "waiting for ${URL}" sleep 2; done; '
+        env:
+        - name: SERVICE_NAME
+          value: vizier-query-broker
+        - name: SERVICE_PORT
+          value: "50300"
+        image: gcr.io/pixie-prod/pixie-prod-artifacts/curl:1.0
+        name: qb-wait
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - hostPath:
+          path: /sys
+          type: Directory
+        name: sys
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-certmgr
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: vizier-certmgr
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: vizier-certmgr
+        plane: control
+    spec:
+      containers:
+      - env:
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: pl-tls-config
+        image: gcr.io/pixie-prod/vizier/certmgr_server_image:0.7.8
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 50900
+            scheme: HTTPS
+        name: app
+        ports:
+        - containerPort: 50900
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+  name: vizier-cloud-connector
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: vizier-cloud-connector
+      vizier-bootstrap: "true"
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: vizier-cloud-connector
+        plane: control
+        vizier-bootstrap: "true"
+    spec:
+      containers:
+      - env:
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+              optional: true
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: PL_DEPLOY_KEY
+          valueFrom:
+            secretKeyRef:
+              key: deploy-key
+              name: pl-deploy-secrets
+              optional: true
+        - name: PL_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PL_MAX_EXPECTED_CLOCK_SKEW
+          value: "2000"
+        - name: PL_RENEW_PERIOD
+          value: "5000"
+        envFrom:
+        - configMapRef:
+            name: pl-cloud-config
+        - configMapRef:
+            name: pl-cloud-connector-tls-config
+        - configMapRef:
+            name: pl-cloud-connector-bootstrap-config
+            optional: true
+        image: gcr.io/pixie-prod/vizier/cloud_connector_server_image:0.7.8
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 50800
+            scheme: HTTPS
+        name: app
+        ports:
+        - containerPort: 50800
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+      serviceAccountName: cloud-conn-service-account
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-proxy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: vizier-proxy
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: vizier-proxy
+        plane: control
+    spec:
+      containers:
+      - args:
+        - -c
+        - /etc/envoy.yaml
+        - --service-cluster
+        - $(POD_NAME)
+        command:
+        - envoy
+        env:
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: envoyproxy/envoy:v1.12.2
+        name: app
+        ports:
+        - containerPort: 55000
+        volumeMounts:
+        - mountPath: /etc/envoy.yaml
+          name: envoy-yaml
+          subPath: envoy.yaml
+        - mountPath: /proxy-certs
+          name: proxy-certs
+        - mountPath: /certs
+          name: certs
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - configMap:
+          name: proxy-envoy-config
+        name: envoy-yaml
+      - name: proxy-certs
+        secret:
+          secretName: proxy-tls-certs
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: vizier-query-broker
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pl-monitoring
+      component: vizier
+      name: vizier-query-broker
+  template:
+    metadata:
+      annotations:
+
+      labels:
+
+        app: pl-monitoring
+        component: vizier
+        name: vizier-query-broker
+        plane: control
+    spec:
+      containers:
+      - env:
+        - name: PL_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PL_CLUSTER_ID
+          valueFrom:
+            secretKeyRef:
+              key: cluster-id
+              name: pl-cluster-secrets
+        - name: PL_SENTRY_DSN
+          value: ""
+        - name: PL_JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              key: jwt-signing-key
+              name: pl-cluster-secrets
+        - name: PL_POD_IP_ADDRESS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PL_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: pl-tls-config
+        image: gcr.io/pixie-prod/vizier/query_broker_server_image:0.7.8
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 50300
+            scheme: HTTPS
+        name: app
+        ports:
+        - containerPort: 50300
+        volumeMounts:
+        - mountPath: /certs
+          name: certs
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - 'set -x; URL="https://${SERVICE_NAME}:${SERVICE_PORT}/healthz"; until [
+          $(curl -m 0.5 -s -o /dev/null -w "%{http_code}" -k ${URL}) -eq 200 ]; do
+          echo "waiting for ${URL}" sleep 2; done; '
+        env:
+        - name: SERVICE_NAME
+          value: vizier-metadata
+        - name: SERVICE_PORT
+          value: "50400"
+        image: gcr.io/pixie-prod/pixie-prod-artifacts/curl:1.0
+        name: mds-wait
+      volumes:
+      - name: certs
+        secret:
+          secretName: service-tls-certs
+      - configMap:
+          name: proxy-envoy-config
+        name: envoy-yaml
+---

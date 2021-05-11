@@ -1,0 +1,43 @@
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+  name: cert-provisioner-job
+  namespace: default
+spec:
+  backoffLimit: 1
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: pl-monitoring
+        component: vizier
+        vizier-bootstrap: "true"
+      name: cert-provisioner-job
+    spec:
+      containers:
+      - env:
+        - name: PL_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: pl-cloud-config
+        - configMapRef:
+            name: pl-cluster-config
+            optional: true
+        image: gcr.io/pixie-prod/vizier/cert_provisioner_image:0.7.8
+        name: provisioner
+      restartPolicy: Never
+      serviceAccountName: updater-service-account
+---

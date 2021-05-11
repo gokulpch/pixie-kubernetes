@@ -1,0 +1,149 @@
+---
+# Source: pixie-chart/templates/01_nats.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+  name: pl:nats-operator-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl:nats-operator
+subjects:
+- kind: ServiceAccount
+  name: nats-operator
+  namespace: default
+---
+# Source: pixie-chart/templates/01_nats.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+  name: pl:nats-server-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl:nats-server
+subjects:
+- kind: ServiceAccount
+  name: nats-server
+  namespace: default
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+    vizier-updater-dep: "true"
+  name: pl-updater-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl-updater-role
+subjects:
+- kind: ServiceAccount
+  name: updater-service-account
+  namespace: default
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+    vizier-bootstrap: "true"
+  name: pl-cloud-connector-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl-cloud-connector-role
+subjects:
+- kind: ServiceAccount
+  name: cloud-conn-service-account
+  namespace: default
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: pl-node-view-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl-node-view
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: pl-vizier-certmgr
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl-vizier-certmgr
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+---
+# Source: pixie-chart/templates/04_vizier_persistent.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+
+  labels:
+
+    app: pl-monitoring
+    component: vizier
+  name: pl-vizier-metadata-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pl-vizier-metadata
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+---
